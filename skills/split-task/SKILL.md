@@ -69,6 +69,8 @@ description: Read user-provided task descriptions and/or project documents, summ
    - 使用简体中文 Markdown。
    - 保留代码、命令、路径、字段名、API 名称的原文。
    - 新建任务拆分时，每个子任务默认写入 `状态：pending` 和 `完成记录：暂无`。
+   - 必须把“执行规则”写入 `current_tasks.md` 本身，不能只依赖 skill 上下文；这样在上下文压缩或新会话只读取 `current_tasks.md` 时，也能继续遵守规则。
+   - `current_tasks.md` 中的执行规则至少要覆盖：状态含义、TodoWrite 恢复、完成后等待用户确认、用户确认后提交 git commit、进入下一任务前更新文档、非 git repo 时记录原因。
 
 5. 同步创建 TodoWrite 列表。
    - 将 `current_tasks.md` 中的每个子任务同步为一个 todo。
@@ -116,6 +118,46 @@ description: Read user-provided task descriptions and/or project documents, summ
 
 ```markdown
 # 当前任务
+
+## 执行规则
+
+本文档是跨 session 的持久任务状态源。即使对话上下文被压缩或开启新会话，也必须先阅读本文档，并按以下规则继续任务。
+
+### 状态含义
+
+- `pending`：尚未开始。
+- `in_progress`：正在执行。
+- `awaiting_user_review`：agent 认为当前子任务已完成，已写入完成记录，正在等待用户确认。
+- `completed`：用户已确认该子任务完成。
+- `cancelled`：该子任务已取消。
+
+### TodoWrite 恢复规则
+
+新会话或上下文压缩后继续任务时，必须根据本文档重建 TodoWrite：
+
+- `completed` 映射为 completed。
+- `in_progress` 或 `awaiting_user_review` 映射为 in_progress。
+- `pending` 映射为 pending。
+- `cancelled` 映射为 cancelled。
+
+如果存在 `awaiting_user_review` 的子任务，不要直接进入下一步，必须先等待用户确认。
+
+### 子任务执行规则
+
+1. 开始某个子任务前，先把该子任务状态更新为 `in_progress`，并同步 TodoWrite。
+2. 完成实现和验证后，把实际改动、验证命令/结果、遗留问题写入该子任务的 `完成记录`。
+3. agent 完成子任务后，只能把状态更新为 `awaiting_user_review`，不能自行判定为最终完成。
+4. 只有当用户明确表示认可，例如“继续下一个任务”“好的继续”“可以，继续”“没问题，下一步”时，才把该子任务状态更新为 `completed`。
+5. 用户确认后、开始下一个子任务前，必须 git commit 当前子任务的代码/配置/文档改动，以及本文档的状态和完成记录更新。
+6. 如果当前目录不是 git repo，或用户明确要求不提交，则不要强行提交；必须在完成记录和回复中说明原因。
+7. 如果用户指出问题或要求修改，不要进入下一子任务；继续修正当前子任务，并更新完成记录。
+
+### 提交规则
+
+- 每个被用户确认完成的子任务应单独提交。
+- 提交前检查 git status 和 diff，避免提交无关文件、密钥或用户未要求提交的敏感文件。
+- commit message 应准确概括该子任务结果，并尽量遵循项目既有风格。
+- 不要 amend，不要 force push，不要执行 destructive git 命令。
 
 ## 任务摘要
 

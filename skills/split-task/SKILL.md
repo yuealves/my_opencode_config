@@ -12,7 +12,7 @@ description: Read user-provided task descriptions and/or project documents, summ
 典型触发语义：
 
 - “阅读这个文档，帮我总结当前任务并切分子任务”
-- “根据我下面这段任务描述，先阅读项目，再 split_task”
+- “根据我下面这段任务描述，先阅读项目，再使用 split-task”
 - “把任务分解成 3-5 个阶段，写到 current_tasks.md”
 - “之后我想让你按 current_tasks.md 一步一步做，并在 todo list 里显示”
 - “总结这个项目现在要做什么，并给每步验证方式”
@@ -205,7 +205,7 @@ description: Read user-provided task descriptions and/or project documents, summ
 - 只要执行此 skill，就应调用 TodoWrite 创建或更新 todo list，除非当前环境没有 TodoWrite 工具。
 - TodoWrite 的 todo 数量应与 `current_tasks.md` 的子任务数量一致。
 - TodoWrite 文案要短，适合界面显示；详细说明和验证方式放在 `current_tasks.md` 与最终回复里。
-- 如果当前会话已有 unrelated todo，不要无故保留旧 todo；执行 split_task 时应以新的任务拆分为准重建 todo list。
+- 如果当前会话已有 unrelated todo，不要无故保留旧 todo；执行 `split-task` 时应以新的任务拆分为准重建 todo list。
 - 如果用户要求只生成文档、不创建 todo，则尊重用户要求，不调用 TodoWrite。
 - 从 `current_tasks.md` 恢复任务时，必须根据文档中的状态重建 TodoWrite，而不是从头创建全部 pending。
 
@@ -225,7 +225,7 @@ description: Read user-provided task descriptions and/or project documents, summ
 ```text
 @docs/task_brief.md 阅读这个文档，帮我总结当前任务是什么，然后把任务分解成 3-5 个可以阶段性验证的子任务，放到 current_tasks.md 里。
 
-根据下面这段任务描述，先阅读项目相关代码，再 split_task：
+根据下面这段任务描述，先阅读项目相关代码，再使用 `split-task`：
 我要给登录页增加短信验证码登录，并保证原有密码登录不受影响。
 ```
 

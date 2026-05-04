@@ -22,7 +22,6 @@ chmod +x setup.sh
 安装内容：
 
 - `global-chinese.md` -> `~/.config/opencode/instructions/global-chinese.md`
-- `commands/*.md` -> `~/.config/opencode/commands/`
 - `skills/*` -> `~/.config/opencode/skills/`
 - 生成 `~/.config/opencode/opencode.json`
 
@@ -50,18 +49,12 @@ OPENCODE_CONFIG_DIR=/path/to/opencode ./setup.sh
 
 ## 说明
 
-如果目标路径已有文件或目录，脚本会先移动到：
+新版 OpenCode 已支持直接通过 slash 触发 skill，因此这里不再保留单独的 `commands/` 包装层；`setup.sh` 现在也不会再安装 `commands/`。
+
+## 当前 Skill
 
 ```text
-~/.config/opencode/backups/YYYYMMDD-HHMMSS
-```
-
-安装完成后需要重启 OpenCode，新的 command 和 skill 才会被加载。
-
-## 当前命令
-
-```text
-/split_task
+split-task
 ```
 
 用于总结或恢复当前任务，维护 `current_tasks.md`，拆分可验证子任务并同步 TodoWrite。

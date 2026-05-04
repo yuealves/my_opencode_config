@@ -130,17 +130,9 @@ printf 'Target OpenCode config dir: %s\n' "$config_dir"
 
 ensure_dir "$config_dir"
 ensure_dir "$config_dir/instructions"
-ensure_dir "$config_dir/commands"
 ensure_dir "$config_dir/skills"
 
 install_path "$repo_dir/global-chinese.md" "$config_dir/instructions/global-chinese.md"
-
-if [[ -d "$repo_dir/commands" ]]; then
-  for src in "$repo_dir"/commands/*.md; do
-    [[ -e "$src" ]] || continue
-    install_path "$src" "$config_dir/commands/$(basename "$src")"
-  done
-fi
 
 if [[ -d "$repo_dir/skills" ]]; then
   for src in "$repo_dir"/skills/*; do
@@ -152,8 +144,8 @@ fi
 write_opencode_json
 
 printf '\nOpenCode config setup complete.\n'
-printf 'Restart OpenCode to pick up command/skill changes.\n'
-printf 'Try: /split_task <your task description or @doc>\n'
+printf 'Restart OpenCode to pick up skill changes.\n'
+printf 'Try the split-task skill via slash in OpenCode.\n'
 
 if [[ -d "$backup_dir" ]]; then
   printf 'Backups written to: %s\n' "$backup_dir"

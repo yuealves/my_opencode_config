@@ -145,7 +145,7 @@ write_opencode_json
 
 printf '\nOpenCode config setup complete.\n'
 printf 'Restart OpenCode to pick up skill changes.\n'
-printf 'Try the split-task skill via slash in OpenCode.\n'
+printf 'Try installed skills via slash in OpenCode.\n'
 
 if [[ -d "$backup_dir" ]]; then
   printf 'Backups written to: %s\n' "$backup_dir"

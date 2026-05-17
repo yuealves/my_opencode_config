@@ -11,8 +11,8 @@ usage() {
   printf '%s\n' \
     "Usage: ./install-to-claude-code.sh [--dry-run] [--copy]" \
     "" \
-    "Installs split-task skill from this repo into Claude Code at:" \
-    "  $claude_skills_dir/split-task/" \
+    "Installs all skills from this repo into Claude Code at:" \
+    "  $claude_skills_dir/<skill-name>/" \
     "" \
     "Options:" \
     "  --dry-run   Show actions without changing files" \
@@ -103,13 +103,18 @@ install_skill() {
   fi
 }
 
-printf 'Installing split-task skill to Claude Code\n'
+printf 'Installing skills to Claude Code\n'
 printf 'Repo dir:       %s\n' "$repo_dir"
 printf 'Claude skills:  %s\n' "$claude_skills_dir"
 printf 'Mode:           %s\n' "$([[ "$copy_mode" -eq 1 ]] && echo 'copy' || echo 'symlink')"
 
-install_skill "split-task"
+if [[ -d "$repo_dir/skills" ]]; then
+  for src in "$repo_dir"/skills/*; do
+    [[ -d "$src" ]] || continue
+    install_skill "$(basename "$src")"
+  done
+fi
 
-printf '\nDone. The split-task skill is now available in Claude Code.\n'
+printf '\nDone. Skills are now available in Claude Code.\n'
 printf 'Restart Claude Code or start a new session to pick up the skill.\n'
-printf 'You can invoke it with /split-task in Claude Code.\n'
+printf 'You can invoke skills with slash commands in Claude Code.\n'

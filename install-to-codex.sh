@@ -12,8 +12,8 @@ usage() {
   printf '%s\n' \
     "Usage: ./install-to-codex.sh [--dry-run] [--copy]" \
     "" \
-    "Installs split-task skill from this repo into Codex at:" \
-    "  $codex_skills_dir/split-task/" \
+    "Installs all skills from this repo into Codex at:" \
+    "  $codex_skills_dir/<skill-name>/" \
     "" \
     "Options:" \
     "  --dry-run   Show actions without changing files" \
@@ -103,12 +103,17 @@ install_skill() {
   fi
 }
 
-printf 'Installing split-task skill to Codex\n'
+printf 'Installing skills to Codex\n'
 printf 'Repo dir:      %s\n' "$repo_dir"
 printf 'Codex skills:  %s\n' "$codex_skills_dir"
 printf 'Mode:          %s\n' "$([[ "$copy_mode" -eq 1 ]] && echo 'copy' || echo 'symlink')"
 
-install_skill "split-task"
+if [[ -d "$repo_dir/skills" ]]; then
+  for src in "$repo_dir"/skills/*; do
+    [[ -d "$src" ]] || continue
+    install_skill "$(basename "$src")"
+  done
+fi
 
-printf '\nDone. The split-task skill is now available in Codex.\n'
+printf '\nDone. Skills are now available in Codex.\n'
 printf 'Restart Codex or start a new session to pick up the skill.\n'

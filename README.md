@@ -53,17 +53,19 @@ OPENCODE_CONFIG_DIR=/path/to/opencode ./setup.sh
 
 新版 OpenCode 已支持直接通过 slash 触发 skill，因此这里不再保留单独的 `commands/` 包装层；`setup.sh` 现在也不会再安装 `commands/`。
 
-## 当前 Skill
+## 当前 Skills
 
 ```text
 split-task
+technical-plan
 ```
 
-用于总结或恢复当前任务，维护 `current_tasks.md`，拆分可验证子任务并同步 TodoWrite。
+- `split-task`：用于总结或恢复当前任务，维护 `current_tasks.md`，拆分可验证子任务并同步 TodoWrite。
+- `technical-plan`：用于大工程任务开工前调研现状、写技术方案文档、拆分实现/验证阶段，并等待用户确认后再实现。
 
 ## 安装到 Codex
 
-把 `split-task` skill 安装到 Codex：
+把本仓库所有 skills 安装到 Codex：
 
 ```bash
 chmod +x install-to-codex.sh
@@ -73,7 +75,7 @@ chmod +x install-to-codex.sh
 默认安装到：
 
 ```text
-~/.codex/skills/split-task
+~/.codex/skills/<skill-name>
 ```
 
 默认使用 symlink。可用选项：
@@ -89,7 +91,7 @@ CODEX_SKILLS_DIR=/path/to/skills ./install-to-codex.sh
 
 ## 安装到 Claude Code
 
-把 `split-task` skill 安装到 Claude Code：
+把本仓库所有 skills 安装到 Claude Code：
 
 ```bash
 chmod +x install-to-claude-code.sh
@@ -99,5 +101,5 @@ chmod +x install-to-claude-code.sh
 默认安装到：
 
 ```text
-~/.claude/skills/split-task
+~/.claude/skills/<skill-name>
 ```

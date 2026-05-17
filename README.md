@@ -4,6 +4,8 @@
 
 ## 安装
 
+### OpenCode
+
 在新机器上执行：
 
 ```bash
@@ -58,3 +60,44 @@ split-task
 ```
 
 用于总结或恢复当前任务，维护 `current_tasks.md`，拆分可验证子任务并同步 TodoWrite。
+
+## 安装到 Codex
+
+把 `split-task` skill 安装到 Codex：
+
+```bash
+chmod +x install-to-codex.sh
+./install-to-codex.sh
+```
+
+默认安装到：
+
+```text
+~/.codex/skills/split-task
+```
+
+默认使用 symlink。可用选项：
+
+```bash
+./install-to-codex.sh --dry-run
+./install-to-codex.sh --copy
+CODEX_HOME=/path/to/codex ./install-to-codex.sh
+CODEX_SKILLS_DIR=/path/to/skills ./install-to-codex.sh
+```
+
+安装后重启 Codex 或开启新会话，让 skill 生效。
+
+## 安装到 Claude Code
+
+把 `split-task` skill 安装到 Claude Code：
+
+```bash
+chmod +x install-to-claude-code.sh
+./install-to-claude-code.sh
+```
+
+默认安装到：
+
+```text
+~/.claude/skills/split-task
+```

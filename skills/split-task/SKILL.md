@@ -1,6 +1,6 @@
 ---
 name: split-task
-description: Read user-provided task descriptions and/or project documents, summarize the current task, split it into verifiable sequential subtasks saved as current_tasks.md, mirror subtasks into TodoWrite, and maintain persistent progress/commit checkpoints between subtasks. Use when the user asks to turn context into a step-by-step task breakdown for future execution or resume from current_tasks.md.
+description: Read user-provided task descriptions and/or project documents, summarize the current task, split it into verifiable sequential subtasks saved as current_tasks.md, mirror subtasks into TodoWrite, and maintain persistent progress/task-branch checkpoints between subtasks. Use when the user asks to turn context into a step-by-step task breakdown for future execution or resume from current_tasks.md.
 ---
 
 # split-task
@@ -70,7 +70,7 @@ description: Read user-provided task descriptions and/or project documents, summ
    - 保留代码、命令、路径、字段名、API 名称的原文。
    - 新建任务拆分时，每个子任务默认写入 `状态：pending` 和 `完成记录：暂无`。
    - 必须把“执行规则”写入 `current_tasks.md` 本身，不能只依赖 skill 上下文；这样在上下文压缩或新会话只读取 `current_tasks.md` 时，也能继续遵守规则。
-   - `current_tasks.md` 中的执行规则至少要覆盖：状态含义、TodoWrite 恢复、完成后等待用户确认、用户确认后提交 git commit、进入下一任务前更新文档、非 git repo 时记录原因。
+   - `current_tasks.md` 中的执行规则至少要覆盖：状态含义、TodoWrite 恢复、任务专用分支策略、完成后等待用户确认、用户确认后提交子任务 commit、全部完成后 squash merge 回原分支、进入下一任务前更新文档、非 git repo 时记录原因。
 
 5. 同步创建 TodoWrite 列表。
    - 将 `current_tasks.md` 中的每个子任务同步为一个 todo。
@@ -102,14 +102,20 @@ description: Read user-provided task descriptions and/or project documents, summ
 4. 将该子任务状态更新为 `awaiting_user_review`，表示 agent 认为已完成，但还未获得用户认可。
 5. 向用户汇报本子任务完成情况，并等待用户判断。
 6. 只有当用户明确表达认可，例如“继续下一个任务”、“好的继续”、“可以，继续”、“没问题，下一步”时，才把该子任务状态从 `awaiting_user_review` 更新为 `completed`。
-7. 用户确认后、开始下一个子任务前，必须创建 git commit，提交本子任务的代码改动和 `current_tasks.md` 进度更新。
+7. 用户确认后、开始下一个子任务前，必须在任务专用分支上创建 git commit，提交本子任务的代码改动和 `current_tasks.md` 进度更新。
 8. 如果用户指出问题或要求修改，不要进入下一子任务；继续修正当前子任务，并更新完成记录。
 
-## 子任务提交规则
+## 任务分支与提交规则
 
-- 每个被用户确认完成的子任务，都应在进入下一个子任务前单独 git commit。
-- commit 内容应包含该子任务的所有相关代码/配置/文档改动，以及 `current_tasks.md` 的状态和完成记录更新。
-- commit message 应准确概括该子任务结果，优先使用简洁英文或遵循项目既有风格。
+- 第一次开始执行某个任务拆分中的第一个子任务时，如果当前目录是 git repo，应先记录当前分支为“原分支”，再从该分支创建并切换到任务专用分支：`git checkout -b <task-branch>`。
+- 任务专用分支名应能对应当前整体任务，优先使用 `split-task/<short-task-name>`；如果项目已有分支命名规范，则遵循项目规范。
+- 如果 `current_tasks.md` 已记录任务专用分支，恢复任务时应先确认当前分支；不在该分支时，切换回已记录的任务专用分支再继续。
+- 每个被用户确认完成的子任务，都应在进入下一个子任务前，在任务专用分支上单独 git commit。
+- 子任务 commit 内容应包含该子任务的所有相关代码/配置/文档改动，以及 `current_tasks.md` 的状态和完成记录更新。
+- 子任务 commit message 应准确概括该子任务结果，优先使用简洁英文或遵循项目既有风格。
+- 所有子任务都被用户确认完成后，应切换回原分支，并将任务专用分支 squash merge 回原分支：`git merge --squash <task-branch>`。
+- squash merge 后只创建一个面向整体任务的 commit，commit message 写针对整个 task 的描述，不需要保留每个子任务的细节。
+- 任务专用分支不要删除，保留其中的详细子任务 commit 以便之后追溯。
 - 提交前必须检查 git status 和 diff，避免提交明显无关文件、密钥或用户未要求提交的敏感文件。
 - 如果当前目录不是 git repo，或用户明确要求不提交，则不要强行提交；在 `current_tasks.md` 完成记录和最终回复中说明原因。
 - 不要 amend，不要 force push，不要执行 destructive git 命令。
@@ -122,6 +128,11 @@ description: Read user-provided task descriptions and/or project documents, summ
 ## 执行规则
 
 本文档是跨 session 的持久任务状态源。即使对话上下文被压缩或开启新会话，也必须先阅读本文档，并按以下规则继续任务。
+
+### Git 分支信息
+
+- 原分支：待开始第一个子任务时记录。
+- 任务专用分支：待开始第一个子任务时创建并记录，建议命名为 `split-task/<short-task-name>`。
 
 ### 状态含义
 
@@ -144,19 +155,24 @@ description: Read user-provided task descriptions and/or project documents, summ
 
 ### 子任务执行规则
 
-1. 开始某个子任务前，先把该子任务状态更新为 `in_progress`，并同步 TodoWrite。
-2. 完成实现和验证后，把实际改动、验证命令/结果、遗留问题写入该子任务的 `完成记录`。
-3. agent 完成子任务后，只能把状态更新为 `awaiting_user_review`，不能自行判定为最终完成。
-4. 只有当用户明确表示认可，例如“继续下一个任务”“好的继续”“可以，继续”“没问题，下一步”时，才把该子任务状态更新为 `completed`。
-5. 用户确认后、开始下一个子任务前，必须 git commit 当前子任务的代码/配置/文档改动，以及本文档的状态和完成记录更新。
-6. 如果当前目录不是 git repo，或用户明确要求不提交，则不要强行提交；必须在完成记录和回复中说明原因。
-7. 如果用户指出问题或要求修改，不要进入下一子任务；继续修正当前子任务，并更新完成记录。
+1. 第一次开始执行第一个子任务前，如果当前目录是 git repo，先记录当前分支为“原分支”，再创建并切换到任务专用分支：`git checkout -b <task-branch>`，并把分支名写回本文档。
+2. 恢复任务时，如果本文档已记录任务专用分支，应先确认当前分支；不在任务专用分支时，切换回任务专用分支再继续子任务。
+3. 开始某个子任务前，先把该子任务状态更新为 `in_progress`，并同步 TodoWrite。
+4. 完成实现和验证后，把实际改动、验证命令/结果、遗留问题写入该子任务的 `完成记录`。
+5. agent 完成子任务后，只能把状态更新为 `awaiting_user_review`，不能自行判定为最终完成。
+6. 只有当用户明确表示认可，例如“继续下一个任务”“好的继续”“可以，继续”“没问题，下一步”时，才把该子任务状态更新为 `completed`。
+7. 用户确认后、开始下一个子任务前，必须在任务专用分支上 git commit 当前子任务的代码/配置/文档改动，以及本文档的状态和完成记录更新。
+8. 如果当前目录不是 git repo，或用户明确要求不提交，则不要强行提交；必须在完成记录和回复中说明原因。
+9. 如果用户指出问题或要求修改，不要进入下一子任务；继续修正当前子任务，并更新完成记录。
 
 ### 提交规则
 
-- 每个被用户确认完成的子任务应单独提交。
+- 每个被用户确认完成的子任务应在任务专用分支上单独提交。
 - 提交前检查 git status 和 diff，避免提交无关文件、密钥或用户未要求提交的敏感文件。
-- commit message 应准确概括该子任务结果，并尽量遵循项目既有风格。
+- 子任务 commit message 应准确概括该子任务结果，并尽量遵循项目既有风格。
+- 所有子任务都被用户确认完成后，切换回原分支，执行 `git merge --squash <task-branch>`，再创建一个面向整体任务的最终 commit。
+- 最终 commit message 只写针对整个 task 的描述，不需要罗列每个子任务。
+- 不要删除任务专用分支，保留其中的详细子任务 commit 以便之后追溯。
 - 不要 amend，不要 force push，不要执行 destructive git 命令。
 
 ## 任务摘要
@@ -254,4 +270,5 @@ description: Read user-provided task descriptions and/or project documents, summ
 1. 读取 `current_tasks.md`。
 2. 根据 `状态` 和 `完成记录` 重建 TodoWrite。
 3. 如果上一子任务是 `awaiting_user_review`，先等待用户确认，不直接进入下一步。
-4. 如果已有已确认的 `completed` 子任务且下一个为 `pending`，开始该 pending 子任务前先检查是否需要为上一个已确认任务补 git commit。
+4. 如果已有已确认的 `completed` 子任务且下一个为 `pending`，开始该 pending 子任务前先检查是否需要在任务专用分支上为上一个已确认任务补 git commit。
+5. 如果所有子任务都已 `completed`，检查是否已 squash merge 回原分支；尚未合并时，执行 squash merge，并用整体任务描述创建最终 commit。

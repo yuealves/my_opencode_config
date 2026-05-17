@@ -112,13 +112,46 @@ description: Read user-provided task descriptions and/or project documents, summ
 - 如果 `current_tasks.md` 已记录任务专用分支，恢复任务时应先确认当前分支；不在该分支时，切换回已记录的任务专用分支再继续。
 - 每个被用户确认完成的子任务，都应在进入下一个子任务前，在任务专用分支上单独 git commit。
 - 子任务 commit 内容应包含该子任务的所有相关代码/配置/文档改动，以及 `current_tasks.md` 的状态和完成记录更新。
-- 子任务 commit message 应准确概括该子任务结果，优先使用简洁英文或遵循项目既有风格。
+- 子任务 commit message 应准确概括该子任务结果，优先使用“标题 + Implementation 正文”的统一规范；如果项目已有更明确规范，则遵循项目规范。
 - 所有子任务都被用户确认完成后，应切换回原分支，并将任务专用分支 squash merge 回原分支：`git merge --squash <task-branch>`。
-- squash merge 后只创建一个面向整体任务的 commit，commit message 写针对整个 task 的描述，不需要保留每个子任务的细节。
+- squash merge 后只创建一个面向整体任务的 commit，commit message 使用统一规范，说明整体功能和关键代码结构，不需要逐条保留每个子任务的细节。
 - 任务专用分支不要删除，保留其中的详细子任务 commit 以便之后追溯。
 - 提交前必须检查 git status 和 diff，避免提交明显无关文件、密钥或用户未要求提交的敏感文件。
 - 如果当前目录不是 git repo，或用户明确要求不提交，则不要强行提交；在 `current_tasks.md` 完成记录和最终回复中说明原因。
 - 不要 amend，不要 force push，不要执行 destructive git 命令。
+
+### Commit Message 规范
+
+优先使用下面的统一格式：
+
+```text
+<type>(<area>): <summary>
+
+Implementation:
+- <changed file/module/structure>: <what it does>
+- <changed behavior>: <user-visible or workflow result>
+- <important implementation detail if any>
+```
+
+要求：
+
+- `type` 优先使用 `feat`、`fix`、`docs`、`refactor`、`test`、`chore`。
+- `area` 使用功能名、目录名或主要模块名，例如 `split-task`、`codex`、`readme`、`setup`、`skills`。
+- `summary` 简明说明实现了什么能力或修复了什么问题。
+- `Implementation` 至少列出 2-3 条关键改动，尽量提到文件、模块、脚本、配置或核心代码结构。
+- 最终 squash commit 应面向整体任务写 message；子任务细节保留在任务专用分支的历史里。
+
+示例：
+
+```text
+feat(skills): support Codex install and branch-based split-task execution
+
+Implementation:
+- add install-to-codex.sh mirroring Claude Code installer behavior
+- extend README with Codex/Claude Code skill install sections
+- change split-task SKILL.md from per-subtask mainline commits to task-branch commits
+- preserve detailed subtask commits by leaving task branches undeleted
+```
 
 ## current_tasks.md 推荐模板
 
@@ -169,11 +202,32 @@ description: Read user-provided task descriptions and/or project documents, summ
 
 - 每个被用户确认完成的子任务应在任务专用分支上单独提交。
 - 提交前检查 git status 和 diff，避免提交无关文件、密钥或用户未要求提交的敏感文件。
-- 子任务 commit message 应准确概括该子任务结果，并尽量遵循项目既有风格。
+- 子任务 commit message 应准确概括该子任务结果，并尽量使用“标题 + Implementation 正文”的统一规范。
 - 所有子任务都被用户确认完成后，切换回原分支，执行 `git merge --squash <task-branch>`，再创建一个面向整体任务的最终 commit。
-- 最终 commit message 只写针对整个 task 的描述，不需要罗列每个子任务。
+- 最终 commit message 使用统一规范，只写针对整个 task 的描述和关键代码结构，不需要逐条罗列每个子任务。
 - 不要删除任务专用分支，保留其中的详细子任务 commit 以便之后追溯。
 - 不要 amend，不要 force push，不要执行 destructive git 命令。
+
+### Commit Message 规范
+
+优先使用下面的统一格式：
+
+```text
+<type>(<area>): <summary>
+
+Implementation:
+- <changed file/module/structure>: <what it does>
+- <changed behavior>: <user-visible or workflow result>
+- <important implementation detail if any>
+```
+
+要求：
+
+- `type` 优先使用 `feat`、`fix`、`docs`、`refactor`、`test`、`chore`。
+- `area` 使用功能名、目录名或主要模块名，例如 `split-task`、`codex`、`readme`、`setup`、`skills`。
+- `summary` 简明说明实现了什么能力或修复了什么问题。
+- `Implementation` 至少列出 2-3 条关键改动，尽量提到文件、模块、脚本、配置或核心代码结构。
+- 最终 squash commit 应面向整体任务写 message；子任务细节保留在任务专用分支的历史里。
 
 ## 任务摘要
 

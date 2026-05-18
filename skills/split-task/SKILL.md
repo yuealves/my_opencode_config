@@ -1,13 +1,15 @@
 ---
 name: split-task
-description: Read user-provided task descriptions and/or project documents, summarize the current task, split it into verifiable sequential subtasks saved as current_tasks.md, mirror subtasks into TodoWrite, and maintain persistent progress/task-branch checkpoints between subtasks. Use when the user asks to turn context into a step-by-step task breakdown for future execution or resume from current_tasks.md.
+description: Read user-provided task descriptions and/or project documents, summarize the current task, first write a draft current_tasks.md plus confirmation questions, then refine it after user confirmation; mirror subtasks into TodoWrite, and maintain persistent progress/task-branch checkpoints between subtasks. Use when the user asks to turn context into a step-by-step task breakdown for future execution or resume from current_tasks.md.
 ---
 
 # split-task
 
 ## 适用场景
 
-当用户希望你基于某个文档、若干项目文档，或直接输入的一段任务描述，提炼当前项目任务并产出一个可后续逐步执行的 `current_tasks.md` 时，使用此 skill。此 skill 还应同步创建会话内 TodoWrite 列表，让用户无需打开文档也能在界面上看到分步任务。后续执行任务时，`current_tasks.md` 是持久进度记录，必须随每个子任务的完成情况更新。
+当用户希望你基于某个文档、若干项目文档，或直接输入的一段任务描述，提炼当前项目任务并产出一个可后续逐步执行的 `current_tasks.md` 时，使用此 skill。
+
+默认采用“两段式确认流程”：先快速阅读必要上下文，向用户说明准备怎么做，并写入一版可阅读的 `current_tasks.md` 草案；如果存在不确定点，用优先选择题的方式向用户确认。用户确认后，再根据用户选择更新 `current_tasks.md` 为正式计划，并同步创建会话内 TodoWrite 列表。后续执行任务时，`current_tasks.md` 是持久进度记录，必须随每个子任务的完成情况更新。
 
 典型触发语义：
 
@@ -21,7 +23,17 @@ description: Read user-provided task descriptions and/or project documents, summ
 
 ## 输出目标
 
-在当前项目目录下创建或更新 `current_tasks.md`，包含：
+在当前项目目录下创建或更新 `current_tasks.md`。默认先写草案版，再在用户确认后更新为正式版。
+
+草案版 `current_tasks.md` 必须包含：
+
+1. `计划状态`：写明 `draft_awaiting_user_confirmation`。
+2. `任务摘要`：尽量 200 字以内，用简体中文精炼说明项目背景、当前目标和阶段重点。
+3. `准备怎么做`：用 3-6 条概括 agent 初步判断的执行路线。
+4. `待确认问题`：列出需要用户确认的分歧点；每个问题优先给 2-4 个互斥选项，并标出推荐选项和影响。
+5. `子任务草案`：按当前理解切分 3-5 个子任务，每个子任务写清初步目标和验证方式；状态统一为 `pending`。
+
+正式版 `current_tasks.md` 必须包含：
 
 1. `任务摘要`：尽量 200 字以内，用简体中文精炼说明项目背景、当前目标和阶段重点。
 2. `子任务拆分`：按人类工程执行顺序切分 3-5 个子任务；如果任务复杂可以更多，任务简单可以更少。
@@ -33,7 +45,9 @@ description: Read user-provided task descriptions and/or project documents, summ
    - `完成记录`：完成后写入实际改动、验证结果、用户确认情况和 commit 信息。
 4. 子任务之间应能自然衔接，后一个任务默认依赖前一个任务的可验证结果。
 
-同时使用 TodoWrite 创建一份会话内 todo list：
+草案阶段也应同步创建 TodoWrite 或当前环境等价的计划列表；如果环境没有 TodoWrite，则使用可用的 plan/progress 工具，并在回复中说明。
+
+正式版阶段使用 TodoWrite 创建一份会话内 todo list：
 
 1. 每个子任务对应一个 todo。
 2. todo 文案使用子任务标题，必要时附上简短验证目标。
@@ -41,7 +55,7 @@ description: Read user-provided task descriptions and/or project documents, summ
 4. 优先级按执行重要性设置，通常核心路径为 `high`，辅助验证为 `medium`。
 5. TodoWrite 是会话内可视化进度，`current_tasks.md` 是持久任务文档，两者都要保留。
 
-`current_tasks.md` 还承担跨 session 恢复任务状态的职责：新 session 中如果用户要求“阅读 current_tasks.md 继续任务”，必须先读取该文件，根据各子任务的状态和完成记录重建 TodoWrite 列表，再继续执行合适的下一步。
+`current_tasks.md` 还承担跨 session 恢复任务状态的职责：新 session 中如果用户要求“阅读 current_tasks.md 继续任务”，必须先读取该文件。如果 `计划状态` 仍是 `draft_awaiting_user_confirmation`，不要直接执行子任务，先向用户复述草案和待确认问题；如果已是正式计划，则根据各子任务的状态和完成记录重建 TodoWrite 列表，再继续执行合适的下一步。
 
 ## 工作流程
 
@@ -52,44 +66,66 @@ description: Read user-provided task descriptions and/or project documents, summ
    - 如果用户没有指定文件也没有给出明确描述，先在当前目录查找 `README.md`、`PLAN.md`、`DESIGN.md`、`TASK.md`、`docs/**/*.md` 等相关文档；信息仍不足时，问一个简短澄清问题。
    - 不要凭空假设项目目标；必须基于用户输入或已读取文档总结。
 
-2. 提炼当前任务。
+2. 快速形成草案判断。
    - 区分“项目长期目标”和“当前阶段任务”。
    - 优先写当前最应该执行的阶段，不要把长期远景写成当前立即任务。
    - 如果文档中有验收标准、推荐命令、输入输出路径、参考实现、风险点，要纳入摘要或子任务。
+   - 不要一开始就输出最终详细计划；先说明“准备怎么做”的粗略路径，让用户能快速判断方向是否符合预期。
 
-3. 切分子任务。
+3. 识别需要确认的不确定点。
+   - 如果存在范围、验收标准、是否提交、是否创建分支、是否执行重测试、是否重构文件结构、是否保留历史等分歧，必须先列成待确认问题。
+   - 待确认问题优先使用选择题，而不是开放问答。每个问题给 2-4 个互斥选项，并标明推荐项与取舍。
+   - 如果当前环境提供选择题 UI 工具，优先使用该工具提问；否则在回复里用简短选项列出。
+   - 如果没有明显不确定点，也要说明“我没有发现必须先确认的分歧”，并给用户一次调整方向的机会。
+
+4. 写入草案版 `current_tasks.md`。
+   - 即使仍需用户确认，也必须先写一版 `current_tasks.md` 草案，方便用户阅读完整上下文和初步拆分。
+   - 草案必须包含 `计划状态：draft_awaiting_user_confirmation`。
+   - 草案中的子任务状态全部为 `pending`，不得把任何子任务标为 `in_progress`，除非用户明确要求立即开始执行。
+   - 草案必须把“执行规则”写入文档本身，不能只依赖 skill 上下文。
+
+5. 向用户汇报草案并等待确认。
+   - 回复中简要说明已写入草案路径、准备怎么做、待确认问题和推荐选项。
+   - 不要在用户确认前开始执行子任务或大规模修改项目文件。
+   - 如果用户回复的是选项或方向调整，必须先更新 `current_tasks.md`，再进入正式执行流程。
+
+6. 用户确认后，切分正式子任务。
    - 以可阶段性验证为核心，而不是按代码文件机械拆分。
    - 每步都应有清晰成功信号，例如脚本能运行、schema 对齐、单样本通过、报告可复现、测试通过、构建成功。
    - 优先先做探查/脚手架，再做核心实现，再做对比验证，再做扩展或性能迁移。
    - 每个子任务尽量小到用户能在完成后检查方向是否正确。
 
-4. 写入 `current_tasks.md`。
+7. 写入正式版 `current_tasks.md`。
    - 如果文件不存在，创建新文件。
    - 如果文件已存在，先读取它；除非用户明确要求保留历史，否则用新的任务拆分替换内容。
    - 使用简体中文 Markdown。
    - 保留代码、命令、路径、字段名、API 名称的原文。
+   - 正式版必须包含 `计划状态：confirmed`。
    - 新建任务拆分时，每个子任务默认写入 `状态：pending` 和 `完成记录：暂无`。
    - 必须把“执行规则”写入 `current_tasks.md` 本身，不能只依赖 skill 上下文；这样在上下文压缩或新会话只读取 `current_tasks.md` 时，也能继续遵守规则。
    - `current_tasks.md` 中的执行规则至少要覆盖：状态含义、TodoWrite 恢复、任务专用分支策略、完成后等待用户确认、用户确认后提交子任务 commit、全部完成后 squash merge 回原分支、进入下一任务前更新文档、非 git repo 时记录原因。
 
-5. 同步创建 TodoWrite 列表。
+8. 同步创建 TodoWrite 列表。
    - 将 `current_tasks.md` 中的每个子任务同步为一个 todo。
    - 如果用户只是要求拆任务，不要把第一个 todo 标成 `in_progress`；全部保持 `pending`。
    - 如果用户明确要求“拆完后开始做第一步”，则把第一个 todo 标成 `in_progress`。
    - 后续按 `current_tasks.md` 执行任务时，开始某个子任务前把对应 todo 标为 `in_progress`，完成后立即标为 `completed`。
+   - 如果当前环境没有 TodoWrite，使用等价的 plan/progress 工具；如果也没有，则在回复中说明只能依赖 `current_tasks.md`。
 
-6. 从 `current_tasks.md` 恢复进度。
+9. 从 `current_tasks.md` 恢复进度。
    - 当用户要求“阅读 current_tasks.md 继续任务”或类似表达时，先读取 `current_tasks.md`。
+   - 如果 `计划状态` 是 `draft_awaiting_user_confirmation`，不要执行子任务；先复述草案、待确认问题和推荐选项，等待用户确认。
    - 根据每个子任务的 `状态` 重建 TodoWrite：`completed` 映射为 completed，`in_progress` 或 `awaiting_user_review` 映射为 in_progress，`pending` 映射为 pending，`cancelled` 映射为 cancelled。
    - 如果没有 `in_progress` 或 `awaiting_user_review`，下一步默认选择第一个 `pending` 子任务。
    - 如果有 `awaiting_user_review`，不要直接进入下一任务；先询问或等待用户确认该子任务是否通过。
    - 恢复后在回复中说明当前进度、下一个建议执行的子任务，以及已重建 TodoWrite。
 
-7. 完成后直接汇报任务内容。
+10. 完成后直接汇报任务内容。
    - 说明已写入的文件路径。
-   - 说明已同步创建 TodoWrite 列表。
+   - 说明已同步创建 TodoWrite 列表，或说明当前环境使用了等价 plan 工具。
    - 必须直接输出一段简短的任务描述，让用户无需打开文件也能知道当前要做什么。
    - 必须直接列出子任务标题和每步验证方式的简短版，让用户无需打开文件也能知道如何分步做。
+   - 如果还在草案阶段，必须明确说明“等待用户确认后才会更新为正式计划并开始执行”。
    - 不要重复粘贴整份 `current_tasks.md`；输出应是精简摘要版。
 
 ## 子任务执行与确认流程
@@ -167,6 +203,11 @@ Implementation:
 - 原分支：待开始第一个子任务时记录。
 - 任务专用分支：待开始第一个子任务时创建并记录，建议命名为 `split-task/<short-task-name>`。
 
+### 计划状态
+
+- 当前状态：draft_awaiting_user_confirmation
+- 状态说明：这是初版草案，供用户确认方向和选择项；用户确认后必须更新为 `confirmed`，再开始执行子任务。
+
 ### 状态含义
 
 - `pending`：尚未开始。
@@ -232,6 +273,20 @@ Implementation:
 ## 任务摘要
 
 <用尽量 200 字以内说明：项目背景、当前目标、阶段重点、最终验收方向。>
+
+## 准备怎么做
+
+- <3-6 条粗略执行路线。>
+
+## 待确认问题
+
+### 1. <问题标题>
+
+推荐选项：A
+
+- A. <选项 A>：<影响/取舍。>
+- B. <选项 B>：<影响/取舍。>
+- C. <选项 C>：<影响/取舍。>
 
 ## 子任务拆分
 

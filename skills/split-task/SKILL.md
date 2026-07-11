@@ -134,7 +134,7 @@ description: Read user-provided task descriptions and/or project documents, summ
 
 1. 开始子任务前，把 `current_tasks.md` 中该子任务状态更新为 `in_progress`，并同步 TodoWrite。
 2. 完成代码或文档改动后，运行该子任务对应的验证方式；如果无法验证，记录原因。
-3. 编写 code review 文档（默认 `docs/review/<taskName>_phase<N>_<subtaskName>.md`，taskName 取自任务专用分支名去掉 `split-task/` 前缀，subtaskName 为子任务主题的 kebab-case 简称；路径可按项目结构调整并写进 `current_tasks.md` 执行规则）。该文档面向“只了解项目背景、不了解本次具体改动”的 reviewer，必须包含三部分：① 设计思路（整体设计，易读好懂，先讲为什么再讲怎么做）；② 本子任务的具体改动（逐文件、代码级）；③ 跑通的测试与实际结果。
+3. 编写 code review 文档（默认 `docs/review/<taskName>/phase<N>_<subtaskName>.md`，taskName 取自任务专用分支名去掉 `split-task/` 前缀，作为子目录；subtaskName 为子任务主题的 kebab-case 简称；路径可按项目结构调整并写进 `current_tasks.md` 执行规则）。该文档面向“只了解项目背景、不了解本次具体改动”的 reviewer，必须包含三部分：① 设计思路（整体设计，易读好懂，先讲为什么再讲怎么做）；② 本子任务的具体改动（逐文件、代码级）；③ 跑通的测试与实际结果。
 4. 将完成情况写回 `current_tasks.md`：包括实际改动、验证命令/结果、遗留问题、待用户确认项。
 5. 将该子任务状态更新为 `awaiting_user_review`，并把 review 文档呈现给用户审阅。**此时不要 git commit**——必须等用户 review 通过后才提交。
 6. 只有当用户明确表达认可，例如“继续下一个任务”、“好的继续”、“可以，继续”、“没问题，下一步”时，才把该子任务状态从 `awaiting_user_review` 更新为 `completed`。
@@ -233,7 +233,7 @@ Implementation:
 1. 第一次开始执行第一个子任务前，如果当前目录是 git repo，先记录当前分支为“原分支”，再创建并切换到任务专用分支：`git checkout -b <task-branch>`，并把分支名写回本文档。
 2. 恢复任务时，如果本文档已记录任务专用分支，应先确认当前分支；不在任务专用分支时，切换回任务专用分支再继续子任务。
 3. 开始某个子任务前，先把该子任务状态更新为 `in_progress`，并同步 TodoWrite。
-4. 完成实现和验证后，编写 code review 文档 `docs/review/<taskName>_phase<N>_<subtaskName>.md`（taskName 取自任务专用分支名去掉 `split-task/` 前缀，subtaskName 为子任务主题的 kebab-case 简称；路径按项目结构调整）。该文档面向“只了解项目背景、不了解本次具体改动”的 reviewer，必须包含三部分：① 设计思路（整体设计，易读好懂，先讲为什么再讲怎么做）；② 本子任务的具体改动（逐文件、代码级）；③ 跑通的测试与实际结果。同时把实际改动、验证命令/结果、遗留问题写入该子任务的 `完成记录`。
+4. 完成实现和验证后，编写 code review 文档 `docs/review/<taskName>/phase<N>_<subtaskName>.md`（taskName 取自任务专用分支名去掉 `split-task/` 前缀，作为子目录；subtaskName 为子任务主题的 kebab-case 简称；路径按项目结构调整）。该文档面向“只了解项目背景、不了解本次具体改动”的 reviewer，必须包含三部分：① 设计思路（整体设计，易读好懂，先讲为什么再讲怎么做）；② 本子任务的具体改动（逐文件、代码级）；③ 跑通的测试与实际结果。同时把实际改动、验证命令/结果、遗留问题写入该子任务的 `完成记录`。
 5. agent 完成子任务后，只能把状态更新为 `awaiting_user_review`，并把 review 文档呈现给用户审阅。**此时不要 git commit**——必须等用户 review 通过后才提交。
 6. 只有当用户明确表示认可，例如“继续下一个任务”“好的继续”“可以，继续”“没问题，下一步”时，才把该子任务状态更新为 `completed`。
 7. 用户 review 通过后，再把该子任务的代码/测试/review 文档/本文档状态更新放进**同一个 commit**（review 文档与代码同 commit，一个 hash 自包含）。提交后才开始下一个子任务。
